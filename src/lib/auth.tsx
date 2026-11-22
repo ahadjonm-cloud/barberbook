@@ -15,6 +15,18 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+const FALLBACK_SETTINGS: ShopSettings = {
+  id: 1,
+  name: 'Barbershop',
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  currency: 'USD',
+  slot_minutes: 15,
+  min_notice_minutes: 60,
+  max_days_ahead: 30,
+  phone: null,
+  address: null,
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -40,8 +52,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loadSettings = async () => {
-    const { data } = await supabase.from('shop_settings').select('*').eq('id', 1).single();
-    setSettings(data as ShopSettings | null);
+    const { data, error } = await supabase.from('shop_settings').select('*').eq('id', 1).single();
+    if (error) console.error('Could not load shop_settings (has the SQL migration been run?):', error.message);
+    setSettings((data as ShopSettings | null) ?? FALLBACK_SETTINGS);
   };
 
   useEffect(() => { loadProfile(session?.user.id); }, [session?.user.id]);
