@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { addDays, dateLabel, fmtDateTime, fmtTime, money, todayIn } from '../lib/format';
-import type { Barber, Service } from '../types';
+import type { Barber, Service } from './types';
 
 const DAYS_SHOWN = 14;
 

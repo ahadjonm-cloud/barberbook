@@ -1,36 +1,38 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import type { Profile, ShopSettings } from '../types';
+import type { Category, PlatformSettings, Profile, Worker } from '../types';
 
 interface AuthState {
   session: Session | null;
   profile: Profile | null;
-  settings: ShopSettings | null;
+  /** The signed-in user's worker profile, if they registered as a worker. */
+  worker: Worker | null;
+  settings: PlatformSettings;
+  categories: Category[];
   loading: boolean;
   refreshProfile: () => Promise<void>;
   refreshSettings: () => Promise<void>;
+  refreshCategories: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
-const FALLBACK_SETTINGS: ShopSettings = {
+const FALLBACK_SETTINGS: PlatformSettings = {
   id: 1,
-  name: 'Barbershop',
-  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  currency: 'USD',
-  slot_minutes: 15,
-  min_notice_minutes: 60,
-  max_days_ahead: 30,
-  phone: null,
-  address: null,
+  name: 'manino_one',
+  currency: 'UZS',
+  commission_percent: 5,
+  support_phone: null,
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [settings, setSettings] = useState<ShopSettings | null>(null);
+  const [worker, setWorker] = useState<Worker | null>(null);
+  const [settings, setSettings] = useState<PlatformSettings>(FALLBACK_SETTINGS);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
 
@@ -44,29 +46,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadProfile = async (userId: string | undefined) => {
-    if (!userId) { setProfile(null); return; }
+    if (!userId) { setProfile(null); setWorker(null); return; }
     setProfileLoading(true);
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-    setProfile(data as Profile | null);
+    const [p, w] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
+      supabase.from('workers').select('*').eq('profile_id', userId).maybeSingle(),
+    ]);
+    setProfile(p.data as Profile | null);
+    setWorker(w.data as Worker | null);
     setProfileLoading(false);
   };
 
   const loadSettings = async () => {
-    const { data, error } = await supabase.from('shop_settings').select('*').eq('id', 1).single();
-    if (error) console.error('Could not load shop_settings (has the SQL migration been run?):', error.message);
-    setSettings((data as ShopSettings | null) ?? FALLBACK_SETTINGS);
+    const { data, error } = await supabase.from('platform_settings').select('*').eq('id', 1).maybeSingle();
+    if (error) console.error('Could not load platform_settings (has the marketplace migration been run?):', error.message);
+    if (data) setSettings({ ...(data as PlatformSettings), commission_percent: Number(data.commission_percent) });
+  };
+
+  const loadCategories = async () => {
+    const { data } = await supabase.from('categories').select('*').order('sort').order('name');
+    setCategories((data as Category[]) ?? []);
   };
 
   useEffect(() => { loadProfile(session?.user.id); }, [session?.user.id]);
-  useEffect(() => { loadSettings(); }, []);
+  useEffect(() => { loadSettings(); loadCategories(); }, []);
 
   const value: AuthState = {
     session,
     profile,
+    worker,
     settings,
-    loading: sessionLoading || profileLoading || !settings,
+    categories,
+    loading: sessionLoading || profileLoading,
     refreshProfile: () => loadProfile(session?.user.id),
     refreshSettings: loadSettings,
+    refreshCategories: loadCategories,
     signOut: async () => { await supabase.auth.signOut(); },
   };
 

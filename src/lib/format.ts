@@ -1,44 +1,40 @@
-export function money(cents: number, currency = 'USD') {
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(cents / 100);
+import type { OrderStatus } from '../types';
+
+export function money(amount: number, currency = 'UZS') {
+  if (currency === 'UZS') return `${new Intl.NumberFormat('ru-RU').format(amount)} so'm`;
+  return new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
 }
 
-export function fmtTime(iso: string, timeZone: string) {
-  return new Intl.DateTimeFormat(undefined, { timeZone, hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+/** Commission split, matching the database's generated columns. */
+export function split(price: number, percent: number) {
+  const fee = Math.round((price * percent) / 100);
+  return { fee, payout: price - fee };
 }
 
-export function fmtDateTime(iso: string, timeZone: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    timeZone, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+export function fmtDateTime(iso: string) {
+  return new Intl.DateTimeFormat('uz-UZ', {
+    day: 'numeric', month: 'long', weekday: 'short', hour: '2-digit', minute: '2-digit',
   }).format(new Date(iso));
 }
 
-/** YYYY-MM-DD for "now" in the given time zone. */
-export function todayIn(timeZone: string) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+/** Value for <input type="datetime-local"> in the browser's local time. */
+export function toLocalInput(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** YYYY-MM-DD of an instant in the given time zone. */
-export function dateIn(iso: string, timeZone: string) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
-}
-
-export function addDays(dateStr: string, days: number) {
-  const d = new Date(dateStr + 'T00:00:00Z');
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-export function dateLabel(dateStr: string) {
-  const d = new Date(dateStr + 'T12:00:00Z');
-  return {
-    weekday: d.toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' }),
-    day: d.toLocaleDateString(undefined, { day: 'numeric', timeZone: 'UTC' }),
-    month: d.toLocaleDateString(undefined, { month: 'short', timeZone: 'UTC' }),
-  };
-}
-
-export const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-export const STATUS_LABEL: Record<string, string> = {
-  booked: 'Booked', confirmed: 'Confirmed', completed: 'Completed', cancelled: 'Cancelled', no_show: 'No-show',
+export const STATUS_LABEL: Record<OrderStatus, string> = {
+  open: 'Ishchi kutilmoqda',
+  accepted: 'Qabul qilindi',
+  completed: 'Bajarildi',
+  cancelled: 'Bekor qilindi',
 };
+
+export function initials(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('') || '?';
+}
+
+export function errorText(e: unknown) {
+  if (e && typeof e === 'object' && 'message' in e) return String((e as { message: unknown }).message);
+  return 'Xatolik yuz berdi';
+}

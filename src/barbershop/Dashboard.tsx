@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { addDays, dateIn, fmtTime, STATUS_LABEL, todayIn } from '../lib/format';
-import type { Appointment, AppointmentStatus } from '../types';
+import type { Appointment, AppointmentStatus } from './types';
 
 const SELECT = '*, service:services(name, duration_min, price_cents), barber:barbers(name), customer:profiles(full_name, phone, email)';
 

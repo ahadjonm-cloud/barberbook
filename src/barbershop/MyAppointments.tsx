@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { fmtDateTime, money, STATUS_LABEL } from '../lib/format';
-import type { Appointment } from '../types';
+import type { Appointment } from './types';
 
 const SELECT = '*, service:services(name, duration_min, price_cents), barber:barbers(name)';
 
